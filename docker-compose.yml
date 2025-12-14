@@ -1,0 +1,52 @@
+version: "3.8"
+
+services:
+  # 1. DATABASE (PostgreSQL)
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: cms_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  # 2. CACHE (Redis)
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  # 3. BACKEND (Node.js API)
+  server:
+    build: ./server
+    ports:
+      - "5001:5001"
+    environment:
+      - DB_USER=postgres
+      - DB_HOST=postgres # Points to the service name above
+      - DB_NAME=cms_db
+      - DB_PASSWORD=password
+      - DB_PORT=5432
+      - JWT_SECRET=my_super_secret_sde3_key
+      - REDIS_URL=redis://redis:6379 # Points to redis service
+    depends_on:
+      - postgres
+      - redis
+
+  # 4. FRONTEND (React)
+  client:
+    build: ./client
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:5001
+    depends_on:
+      - server
+    command: ["npm", "run", "dev", "--", "--host"]
+
+# Persist database data even if Docker stops
+volumes:
+  pgdata:
